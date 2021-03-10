@@ -2,13 +2,14 @@ package com.gtappdevelopers.gfgsqldatabase;
 
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -24,47 +25,42 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     //creating variables for our edit text
-    private EditText courseNameEdt, courseDurationEdt, courseDescriptionEdt;
+    private EditText courseIDEdt;
     //creating variable for button
-    private Button submitCourseBtn;
-    //creating a strings for storing our values from edittext fields.
-    private String courseName, courseDuration, courseDescription;
+    private Button getCourseDetailsBtn;
+    //creating variable for card view and text views.
+    private CardView courseCV;
+    private TextView courseNameTV, courseDescTV, courseDurationTV;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //initializing our edittext and button
-        courseNameEdt = findViewById(R.id.idEdtCourseName);
-        courseDescriptionEdt = findViewById(R.id.idEdtCourseDescription);
-        courseDurationEdt = findViewById(R.id.idEdtCourseDuration);
-        submitCourseBtn = findViewById(R.id.idBtnSubmitCourse);
-        submitCourseBtn.setOnClickListener(new View.OnClickListener() {
+        //initializing all our variables.
+        courseNameTV = findViewById(R.id.idTVCourseName);
+        courseDescTV = findViewById(R.id.idTVCourseDescription);
+        courseDurationTV = findViewById(R.id.idTVCourseDuration);
+        getCourseDetailsBtn = findViewById(R.id.idBtnGetCourse);
+        courseIDEdt = findViewById(R.id.idEdtCourseId);
+        courseCV = findViewById(R.id.idCVCOurseItem);
+        //adding click listner for our button.
+        getCourseDetailsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //getting data from edittext fields.
-                courseName = courseNameEdt.getText().toString();
-                courseDescription = courseDescriptionEdt.getText().toString();
-                courseDuration = courseDurationEdt.getText().toString();
-
-                //validating the text fileds if empty or not.
-                if (TextUtils.isEmpty(courseName)) {
-                    courseNameEdt.setError("Please enter Course Name");
-                } else if (TextUtils.isEmpty(courseDescription)) {
-                    courseDescriptionEdt.setError("Please enter Course Description");
-                } else if (TextUtils.isEmpty(courseDuration)) {
-                    courseDurationEdt.setError("Please enter Course Duration");
-                } else {
-                    //calling method to add data to Firebase Firestore.
-                    addDataToDatabase(courseName, courseDescription, courseDuration);
+                //checking if the id text field is empty or not.
+                if (TextUtils.isEmpty(courseIDEdt.getText().toString())) {
+                    Toast.makeText(MainActivity.this, "Please enter course id", Toast.LENGTH_SHORT).show();
+                    return;
                 }
+                //calling method to load data.
+                getCourseDetails(courseIDEdt.getText().toString());
             }
         });
-        
     }
 
-    private void addDataToDatabase(String courseName, String courseDescription, String courseDuration) {
+    private void getCourseDetails(String courseId) {
         //url to post our data
-        String url = "https://exclusive-cottons.000webhostapp.com/addCourses.php";
+        String url = "https://exclusive-cottons.000webhostapp.com/readCourses.php";
         // creating a new variable for our request queue
         RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
         //on below line we are calling a string request method to post the data to our API
@@ -72,24 +68,31 @@ public class MainActivity extends AppCompatActivity {
         StringRequest request = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.e("TAG","RESPONSE IS "+response);
                 try {
+                    //on below line passing our response to json object.
                     JSONObject jsonObject = new JSONObject(response);
+                    //on below line we are checking if the response is null or not.
+                    if (jsonObject.getString("courseName") == null) {
+                        //displaying a toast message if we get error
+                        Toast.makeText(MainActivity.this, "Please enter valid id.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        //if we get the data then we are setting it in our text views in below line.
+                        courseNameTV.setText(jsonObject.getString("courseName"));
+                        courseDescTV.setText(jsonObject.getString("courseDescription"));
+                        courseDurationTV.setText(jsonObject.getString("courseDuration"));
+                        courseCV.setVisibility(View.VISIBLE);
+                    }
+
                     //on below line we are displaying a success toast message.
-                    Toast.makeText(MainActivity.this, jsonObject.getString("message"), Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-                //and setting data to edit text as empty
-                courseNameEdt.setText("");
-                courseDescriptionEdt.setText("");
-                courseDurationEdt.setText("");
-                  }
+            }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
                 //method to handle errors.
-                Toast.makeText(MainActivity.this, "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Fail to get course" + error, Toast.LENGTH_SHORT).show();
             }
         }) {
             @Override
@@ -97,14 +100,13 @@ public class MainActivity extends AppCompatActivity {
                 //as we are passing data in the form of url encoded so we are passing the content type below
                 return "application/x-www-form-urlencoded; charset=UTF-8";
             }
+
             @Override
             protected Map<String, String> getParams() {
                 //below line we are creating a map for storing our values in key and value pair.
                 Map<String, String> params = new HashMap<String, String>();
                 //on below line we are passing our key and value pair to our parameters.
-                params.put("courseName", courseName);
-                params.put("courseDuration", courseDuration);
-                params.put("courseDescription", courseDescription);
+                params.put("id", courseId);
                 //at last we are returning our params.
                 return params;
             }
